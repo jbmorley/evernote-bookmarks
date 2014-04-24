@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ElementTree
 import datetime
 import codecs
 import time
-
+import argparse
 
 def datetime_to_epoch(dt):
   epoch = datetime.datetime(1970,1,1)
@@ -53,4 +53,15 @@ def convert(notes_file, bookmarks_file):
 
   print "Processed %d bookmarks." % count
 
-convert('My Notes.enex', 'bookmarks.html')
+def main():
+
+  parser = argparse.ArgumentParser(description = "Convert Evernote XML Format (.enx) to the Netscape Bookmark File Format (bookmarks.html).")
+  parser.add_argument('input', help = "Evernote .enx file to convert")
+  parser.add_argument('output', help = "Output bookmarks.html file")
+  options = parser.parse_args()
+
+  convert(options.input, options.output)
+
+if __name__ == '__main__':
+  main()
+
