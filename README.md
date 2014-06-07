@@ -7,7 +7,7 @@ Usage
 -----
 
 ```
-usage: evernote-bookmarks.py [-h] input output
+usage: evernote-bookmarks [-h] input output
 
 Convert Evernote XML Format (.enx) to the Netscape Bookmark File Format
 (bookmarks.html).
