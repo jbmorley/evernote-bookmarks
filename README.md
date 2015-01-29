@@ -19,3 +19,15 @@ positional arguments:
 optional arguments:
   -h, --help  show this help message and exit
 ```
+
+Thanks
+------
+
+Many thanks to:
+
+- @geekarist for bug fixes
+
+License
+-------
+
+evernote-bookmarks is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
