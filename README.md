@@ -25,7 +25,7 @@ Thanks
 
 Many thanks to:
 
-- @geekarist for bug fixes
+- [Christophe Pelé](https://github.com/geekarist/) for bug fixes
 
 License
 -------
