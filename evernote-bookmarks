@@ -27,25 +27,33 @@ import logging
 import time
 import xml.etree.ElementTree as ElementTree
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
 def datetime_to_epoch(dt):
   epoch = datetime.datetime(1970,1,1)
   et = (dt - epoch).total_seconds()
   return int(et)
 
+
 def timestamp_to_datetime(ts):
   t = time.strptime(ts, "%Y%m%dT%H%M%SZ")
   dt = datetime.datetime.fromtimestamp(time.mktime(t))
   return dt
+
 
 def timestamp_to_epoch(ts):
   dt = timestamp_to_datetime(ts)
   et = datetime_to_epoch(dt)
   return et
 
-def convert(notes_file, bookmarks_file):
 
+def find_node_recursive(root, search):
+  results = root.findall(search)
+  for child in root.getchildren():
+    results.extend(find_node_recursive(child, search))
+  return results
+
+
+def convert(notes_file, bookmarks_file):
   errors = 0
 
   # Read the evernote export.
@@ -55,17 +63,28 @@ def convert(notes_file, bookmarks_file):
     title = note.find('title').text
     created = note.find('created').text
     tags = map(lambda x: x.text, note.findall('tag'))
-    note_attributes = note.find('note-attributes')
-    if note_attributes is None:
+
+    url = None
+    try:
+      url = note.find('note-attributes').find('source-url').text
+    except AttributeError:
+      content = note.find('content').text
+      en_note = ElementTree.fromstring(content.encode('utf-8'))
+
+      links = find_node_recursive(en_note, 'a')
+      if links:
+        a = links[0]
+        if 'href' in a.attrib:
+          url = a.attrib['href']
+        else:
+          url = a.text
+      logging.warn("Unable to find 'source-url' in '%s'. Using first URL found in note content.", title)
+
+    if url is None:
       logging.warn("Unable to find URL for '%s'...", title)
       errors = errors + 1
       continue
-    source_url = note_attributes.find('source-url')
-    if source_url is None:
-      logging.warn("Unable to find URL for '%s'...", title)
-      errors = errors + 1
-      continue
-    url = source_url.text
+
     bookmarks.append({'title': title, 'created': created, 'url': url, 'tags': tags})
 
   # Write the bookmarks.html file.
@@ -81,7 +100,7 @@ def convert(notes_file, bookmarks_file):
 """)
 
     for bookmark in bookmarks:
-      logging.info("Converted '%s' - Created %s - [%s]", bookmark['title'], timestamp_to_datetime(bookmark['created']), ", ".join(bookmark['tags']))
+      logging.debug("Converted '%s'.", bookmark['title'])
       result = u"    <DT><A HREF=\"%s\" ADD_DATE=\"%d\" TAGS=\"%s\">%s</A>\n" % (bookmark['url'], timestamp_to_epoch(bookmark['created']),  ", ".join(bookmark['tags']), bookmark['title'])
       f.write(result)
       count += 1
@@ -90,14 +109,16 @@ def convert(notes_file, bookmarks_file):
 
   logging.info("Processed %d bookmarks. Failed to import %d bookmarks.", count, errors)
 
-def main():
 
+def main():
   parser = argparse.ArgumentParser(description = "Convert Evernote XML Format (.enx) to the Netscape Bookmark File Format (bookmarks.html).")
   parser.add_argument('input', help = "Evernote .enx file to convert")
   parser.add_argument('output', help = "Output bookmarks.html file")
+  parser.add_argument('--verbose', '-v', action='store_true', default=False)
   options = parser.parse_args()
-
+  logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO, format="%(message)s")
   convert(options.input, options.output)
+
 
 if __name__ == '__main__':
   main()
