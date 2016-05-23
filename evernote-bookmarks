@@ -20,11 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import xml.etree.ElementTree as ElementTree
-import datetime
-import codecs
-import time
 import argparse
+import codecs
+import datetime
+import logging
+import time
+import xml.etree.ElementTree as ElementTree
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
 def datetime_to_epoch(dt):
   epoch = datetime.datetime(1970,1,1)
@@ -43,17 +46,29 @@ def timestamp_to_epoch(ts):
 
 def convert(notes_file, bookmarks_file):
 
+  errors = 0
+
+  # Read the evernote export.
   bookmarks = []
   tree = ElementTree.parse(notes_file)
   for note in tree.getroot().findall('note'):
     title = note.find('title').text
     created = note.find('created').text
     tags = map(lambda x: x.text, note.findall('tag'))
-    source_url = note.find('note-attributes').find('source-url')
-    if source_url is not None:
-        url = source_url.text
-        bookmarks.append({'title': title, 'created': created, 'url': url, 'tags': tags})
+    note_attributes = note.find('note-attributes')
+    if note_attributes is None:
+      logging.warn("Unable to find URL for '%s'...", title)
+      errors = errors + 1
+      continue
+    source_url = note_attributes.find('source-url')
+    if source_url is None:
+      logging.warn("Unable to find URL for '%s'...", title)
+      errors = errors + 1
+      continue
+    url = source_url.text
+    bookmarks.append({'title': title, 'created': created, 'url': url, 'tags': tags})
 
+  # Write the bookmarks.html file.
   count = 0
   with codecs.open(bookmarks_file, 'w', 'utf-8') as f:
     f.write("""<!DOCTYPE NETSCAPE-Bookmark-file-1>
@@ -66,14 +81,14 @@ def convert(notes_file, bookmarks_file):
 """)
 
     for bookmark in bookmarks:
-      print "%s - Created %s - [%s]" % (bookmark['title'], timestamp_to_datetime(bookmark['created']), ", ".join(bookmark['tags']))
+      logging.info("Converted '%s' - Created %s - [%s]", bookmark['title'], timestamp_to_datetime(bookmark['created']), ", ".join(bookmark['tags']))
       result = u"    <DT><A HREF=\"%s\" ADD_DATE=\"%d\" TAGS=\"%s\">%s</A>\n" % (bookmark['url'], timestamp_to_epoch(bookmark['created']),  ", ".join(bookmark['tags']), bookmark['title'])
       f.write(result)
       count += 1
 
     f.write("</DL>\n")
 
-  print "Processed %d bookmarks." % count
+  logging.info("Processed %d bookmarks. Failed to import %d bookmarks.", count, errors)
 
 def main():
 
