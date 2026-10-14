@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+>
+> This project has been archived and will not be maintained or developed further.
+
 evernote-bookmarks
 ==================
 
